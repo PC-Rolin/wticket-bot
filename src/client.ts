@@ -1,4 +1,5 @@
 import { Browser, Page } from "puppeteer";
+import { RawTicket, Ticket } from "./types";
 
 export class WTicketScraper {
   private browser: Browser
@@ -56,5 +57,36 @@ export class WTicketScraper {
   async logout() {
     await this.page.goto("https://wticket-pcrolin.multitrader.nl/login/wf/logout.jsp")
     await this.page.waitForNetworkIdle()
+  }
+
+  async listTickets() {
+    return this.listTicketsRaw().then(tickets => {
+      return tickets.map(raw => {
+        const ticket: Ticket = {
+          id: Number(raw.wf1act_unid),
+          number: Number(raw.instnr)
+        }
+        return ticket
+      })
+    })
+  }
+
+  async listTicketsRaw() {
+    await this.page.goto("https://wticket-pcrolin.multitrader.nl/jsp/atsc/UITableIFrame.jsp?queryid=wf1act")
+
+    return await this.page.$$eval("tr", trs => {
+      const tickets: RawTicket[] = []
+      for (const tr of trs) {
+        if (tr.getAttribute("unid")) {
+          const ticket = JSON.parse(String(tr.getAttribute("data-hidden-columns"))) as RawTicket
+          tickets.push(ticket)
+        }
+      }
+      return tickets
+    })
+  }
+
+  async close() {
+    await this.browser.close()
   }
 }

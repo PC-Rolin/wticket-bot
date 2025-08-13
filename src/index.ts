@@ -1,6 +1,8 @@
 import puppeteer, { LaunchOptions } from "puppeteer";
 import { WTicketScraper } from "./client";
 
+export { Ticket } from "./types"
+
 export async function createWTicketScraper(options?: {
   puppeteer?: LaunchOptions
 }) {

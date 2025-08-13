@@ -10,6 +10,10 @@ export class WTicketScraper {
   }) {
     this.browser = puppeteer.browser
     this.page = puppeteer.page
+
+    this.page.on("dialog", dialog => {
+      dialog.type() === "beforeunload" && dialog.accept()
+    })
   }
 
   async isLoggedIn() {
@@ -35,7 +39,6 @@ export class WTicketScraper {
         if (await this.isLoggedIn()) {
           return
         } else {
-          await new Promise(resolve => setTimeout(resolve, 5000))
           await this.page.click("#remove_session_0")
           await this.page.click("#remove_session_1")
           await this.page.click("#remove_session_1")
@@ -49,5 +52,10 @@ export class WTicketScraper {
         }
       }
     }
+  }
+
+  async logout() {
+    await this.page.goto("https://wticket-pcrolin.multitrader.nl/login/wf/logout.jsp")
+    await this.page.waitForNetworkIdle()
   }
 }

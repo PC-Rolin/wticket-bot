@@ -5,7 +5,7 @@ export async function createWTicketScraper(options?: {
   puppeteer?: LaunchOptions
 }) {
   const browser = await puppeteer.launch(options?.puppeteer)
-  const page = await browser.newPage()
+  const [page] = await browser.pages()
   return new WTicketScraper({
     browser,
     page

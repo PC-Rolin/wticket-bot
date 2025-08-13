@@ -25,8 +25,7 @@ export class WTicketScraper {
     username: string
     password: string
   }) {
-    const loggedIn = await this.isLoggedIn()
-    if (loggedIn) throw new Error("Already logged in")
+    if (await this.isLoggedIn()) return
 
     await this.page.type("#username", credentials.username)
     await this.page.type("#password", credentials.password)

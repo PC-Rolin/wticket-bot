@@ -64,7 +64,8 @@ export class WTicketScraper {
       return tickets.map(raw => {
         const ticket: Ticket = {
           id: Number(raw.wf1act_unid),
-          number: Number(raw.instnr)
+          number: Number(raw.instnr),
+          description: raw.ins_omschr
         }
         return ticket
       })
@@ -84,6 +85,81 @@ export class WTicketScraper {
       }
       return tickets
     })
+  }
+
+  async getRelation(relationNumber: number) {
+    const id = await this.getRelationId(relationNumber)
+    await this.page.goto(`https://wticket-pcrolin.multitrader.nl/jsp/gc/uiform_gc1rel.jsp?uniqueid=${id}`)
+
+    return {
+      id,
+      naw: {
+        number: Number(await this.getInputValue("#relnr")),
+        name: await this.getInputValue("#naam1"),
+        nameAddition: await this.getInputValue("#naam2"),
+        searchName: await this.getInputValue("#zoeknaam"),
+        shortName: await this.getInputValue("#naamkort"),
+        invoiceName: await this.getInputValue("#tavnaam"),
+        establishment: {
+          street: await this.getInputValue("#straat"),
+          houseNumber: Number(await this.getInputValue("#huisnr")),
+          addition: await this.getInputValue("#toevoeging"),
+          address2: await this.getInputValue("#adres2"),
+          addition2: await this.getInputValue("#toevoeging2"),
+          zipCode: await this.getInputValue("#postcod"),
+          place: await this.getInputValue("#plaats"),
+          province: await this.getInputValue("#provincie"),
+          countryCode: await this.getInputValue("#landcod"),
+          country: await this.getInputValue("#land")
+        },
+        mail: {
+          street: await this.getInputValue("#p_straat"),
+          houseNumber: Number(await this.getInputValue("#p_huisnr")),
+          addition: await this.getInputValue("#p_toevoeging"),
+          address2: await this.getInputValue("#p_adres2"),
+          addition2: await this.getInputValue("#p_toevoeging2"),
+          zipCode: await this.getInputValue("#p_postcod"),
+          place: await this.getInputValue("#p_plaats"),
+          province: await this.getInputValue("#p_provincie"),
+          countryCode: await this.getInputValue("#p_landcod"),
+          country: await this.getInputValue("#p_land")
+        }
+      }
+    }
+  }
+
+  getInputValue(selector: string) {
+    return this.page.$eval(selector, input => input.getAttribute("value") as string)
+  }
+
+  async getRelationId(relationNumber: number) {
+    await this.page.goto("https://wticket-pcrolin.multitrader.nl/jsp/wf/index.jsp")
+
+    const frame = await this.page.$("#wmain").then(el => el?.contentFrame() ?? null)
+    if (frame) {
+      await frame.type("#searchfield", String(relationNumber))
+      await this.page.waitForNetworkIdle()
+
+      const entityItem = await frame.$(".entityItem")
+      if (entityItem) {
+        const link = await entityItem.$(".link")
+        if (link) {
+          const dataAction = await link.evaluate(div => div.getAttribute("data-action"))
+          if (dataAction) {
+            const split = dataAction.split('=')
+            return Number(split[split.length - 1])
+          } else {
+            throw new Error("Couldn't find data-action")
+          }
+        } else {
+          throw new Error("Couldn't find link")
+        }
+      } else {
+        throw new Error("Couldn't find entityItem")
+      }
+    } else {
+      throw new Error("Couldn't find main frame")
+    }
   }
 
   async close() {

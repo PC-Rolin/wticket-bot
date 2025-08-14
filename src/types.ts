@@ -68,4 +68,5 @@ export type RawTicket = {
 export type Ticket = {
   id: number
   number: number
+  description: string
 }

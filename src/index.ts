@@ -1,15 +1,19 @@
 import puppeteer, { LaunchOptions } from "puppeteer";
-import { WTicketScraper } from "./client";
+import { WTicketBot } from "./client";
 
 export { Ticket } from "./types"
 
-export async function createWTicketScraper(options?: {
+type CreateOptions = {
   puppeteer?: LaunchOptions
-}) {
-  const browser = await puppeteer.launch(options?.puppeteer)
+  host: string
+}
+
+export async function createWTicketBot(options: CreateOptions) {
+  const browser = await puppeteer.launch(options.puppeteer)
   const [page] = await browser.pages()
-  return new WTicketScraper({
+  return new WTicketBot({
     browser,
-    page
+    page,
+    host: options.host
   })
 }

@@ -1,16 +1,21 @@
 import { Browser, Page } from "puppeteer";
 import { RawTicket, Ticket } from "./types";
 
-export class WTicketScraper {
+type Options = {
+  browser: Browser
+  page: Page
+  host: string
+}
+
+export class WTicketBot {
   private browser: Browser
   private page: Page
+  private host: string
 
-  constructor(puppeteer: {
-    browser: Browser
-    page: Page
-  }) {
-    this.browser = puppeteer.browser
-    this.page = puppeteer.page
+  constructor(options: Options) {
+    this.browser = options.browser
+    this.page = options.page
+    this.host = options.host
 
     this.page.on("dialog", dialog => {
       dialog.type() === "beforeunload" && dialog.accept()
@@ -18,7 +23,7 @@ export class WTicketScraper {
   }
 
   async isLoggedIn() {
-    await this.page.goto("https://wticket-pcrolin.multitrader.nl/jsp/wf/index.jsp")
+    await this.page.goto(`https://${this.host}/jsp/wf/index.jsp`)
     return !(await this.page.title() === "WTicket")
   }
 
@@ -55,7 +60,7 @@ export class WTicketScraper {
   }
 
   async logout() {
-    await this.page.goto("https://wticket-pcrolin.multitrader.nl/login/wf/logout.jsp")
+    await this.page.goto(`https://${this.host}/login/wf/logout.jsp`)
     await this.page.waitForNetworkIdle()
   }
 
@@ -73,7 +78,7 @@ export class WTicketScraper {
   }
 
   async getTicketDetailed(id: number) {
-    await this.page.goto(`https://wticket-pcrolin.multitrader.nl/jsp/wf/uiform/uiform_wf1act.jsp?uniqueid=${id}`)
+    await this.page.goto(`https://${this.host}/jsp/wf/uiform/uiform_wf1act.jsp?uniqueid=${id}`)
 
     const relation = await this.page.$eval("#groupRelation", div => {
       const tds = div.querySelectorAll("td")
@@ -136,7 +141,7 @@ export class WTicketScraper {
   }
 
   async getTicket(ticketNumber: number) {
-    await this.page.goto(`https://wticket-pcrolin.multitrader.nl/jsp/atsc/UITableIFrame.jsp?queryid=wf1act&maxrows=1&searchcol=2&key=_%3Cexact%3E_${ticketNumber}`)
+    await this.page.goto(`https://${this.host}/jsp/atsc/UITableIFrame.jsp?queryid=wf1act&maxrows=1&searchcol=2&key=_%3Cexact%3E_${ticketNumber}`)
 
     const row = (await this.page.$$("tr"))[2]
     return row.evaluate(tr => {
@@ -151,7 +156,7 @@ export class WTicketScraper {
   }
 
   async listTicketsRaw() {
-    await this.page.goto("https://wticket-pcrolin.multitrader.nl/jsp/atsc/UITableIFrame.jsp?queryid=wf1act")
+    await this.page.goto(`https://${this.host}/jsp/atsc/UITableIFrame.jsp?queryid=wf1act`)
 
     return await this.page.$$eval("tr", trs => {
       const tickets: RawTicket[] = []
@@ -166,7 +171,7 @@ export class WTicketScraper {
   }
 
   async getRelation(relationNumber: number) {
-    await this.page.goto(`https://wticket-pcrolin.multitrader.nl/jsp/atsc/UITableIFrame.jsp?queryid=2&searchcol=2&key=_%3Cexact%3E_${relationNumber}&maxrows=1`)
+    await this.page.goto(`https://${this.host}/jsp/atsc/UITableIFrame.jsp?queryid=2&searchcol=2&key=_%3Cexact%3E_${relationNumber}&maxrows=1`)
 
     const row = (await this.page.$$("tr"))[2]
     const data = JSON.parse(await row.evaluate(tr => tr.getAttribute("data-hidden-columns") as string))
@@ -190,7 +195,7 @@ export class WTicketScraper {
   }
 
   async getRelationDetailed(id: number) {
-    await this.page.goto(`https://wticket-pcrolin.multitrader.nl/jsp/gc/uiform_gc1rel.jsp?uniqueid=${id}`)
+    await this.page.goto(`https://${this.host}/jsp/gc/uiform_gc1rel.jsp?uniqueid=${id}`)
 
     return {
       id,

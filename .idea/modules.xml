@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/wticket-scraper.iml" filepath="$PROJECT_DIR$/.idea/wticket-scraper.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/wticket-bot.iml" filepath="$PROJECT_DIR$/.idea/wticket-bot.iml" />
     </modules>
   </component>
 </project>

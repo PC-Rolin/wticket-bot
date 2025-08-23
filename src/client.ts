@@ -1,5 +1,8 @@
 import puppeteer, { LaunchOptions } from "puppeteer";
 import parse from "node-html-parser";
+import { toXML } from "jstoxml"
+import { Field, Form } from "./types";
+import { XMLParser } from "fast-xml-parser";
 
 type Options = {
   puppeteer?: LaunchOptions
@@ -61,6 +64,120 @@ export class WTicketBot {
     })
 
     return await response.text()
+  }
+
+  private async submitForm(form: Form, fields: Field[]) {
+    const body = toXML({
+      _name: "form",
+      _attrs: form,
+      _content: fields.map(field => {
+        return {
+          _name: "field",
+          _attrs: {
+            id: field.id
+          },
+          _content: field.value
+        }
+      })
+    })
+    const response = await fetch("https://" + this.options.host + "/IOServlet", {
+      method: "POST",
+      headers: {
+        ...this.headers,
+        "Content-Type": "text/xml; charset=UTF-8"
+      },
+      body
+    })
+    const text = await response.text()
+
+    const parser = new XMLParser()
+    const xml = parser.parse(text)
+
+    if (xml.ioservletresponse) {
+      if (xml.ioservletresponse.error === "") {
+        throw new Error("Form not recognized")
+      } else {
+        throw new Error(xml.ioservletresponse.error)
+      }
+    } else {
+      if (xml.message.error === "") {
+        return
+      } else {
+        throw new Error(xml.message.error)
+      }
+    }
+  }
+
+  private async executeAction(params: Record<string, string>) {
+    const url = new URL(`https://${this.options.host}/IOServlet`)
+    for (const [key, value] of Object.entries(params)) {
+      url.searchParams.set(key, value)
+    }
+
+    return fetch(url, {
+      method: "POST",
+      headers: this.headers
+    })
+  }
+
+  async addMessage(ticketId: number, options?: {
+    /** Defines whether the message is an internal (I) or external (E) message */
+    messageType?: "I" | "E"
+    color?: "BLAUW" | "DONKER-GRIJS" | "ORANJE" | "GEEL" | "GROEN" | "PAARS" | "ROOD" | "ROZE" | "TURQUOISE"
+    title?: string
+    message?: string
+  }) {
+    const fields: Field[] = [
+      { id: "messageType", value: options?.messageType ?? "I" },
+      { id: "actnr_wf1act_unid", value: String(ticketId) }
+    ]
+    if (options?.color) fields.push({ id: "headerclass", value: options.color })
+    if (options?.title) fields.push({ id: "onderwerp", value: options.title })
+    if (options?.message) fields.push({ id: "bericht", value: options.message })
+
+    await this.submitForm({ id: "wf1procesinsmsgadd", action: "15" }, fields)
+  }
+
+  async pinMessage(messageId: number) {
+    await this.executeAction({
+      action: "101",
+      name: "wf1procesinsmsg",
+      uniqueid: String(messageId)
+    })
+  }
+
+  async unpinMessage(messageId: number) {
+    await this.executeAction({
+      action: "102",
+      name: "wf1procesinsmsg",
+      uniqueid: String(messageId)
+    })
+  }
+
+  async listMessages(ticketId: number) {
+    const html = parse(await this.request("/jsp/wf/uiform/uiform_wf1act.jsp", {
+      uniqueid: String(ticketId)
+    }))
+
+    const comments = html.querySelectorAll(".comment.expanded")
+
+    return comments.map(comment => {
+      const id = Number(comment.getAttribute("id")?.replace("comment", ''))
+      const internal = !!comment.querySelector(".internal")
+      const timestamp = comment.querySelector(".timestamp")?.textContent!
+      const author = comment.querySelector(".author")?.textContent!
+      const title = comment.querySelector(".desc")?.textContent!
+      const message = comment.querySelector(".message")?.innerHTML!
+
+      return {
+        id,
+        messageType: internal ? "I" : "E",
+        timestamp,
+        author,
+        title,
+        message
+      }
+    })
   }
 
   async listStaff() {

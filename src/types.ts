@@ -70,3 +70,19 @@ export type Ticket = {
   number: number
   description: string
 }
+
+export type Form = {
+  id: string,
+  action: string,
+  version?: string,
+  uniqueid?: string,
+  isSaved?: string,
+  isConcept?: string
+  isFromGUI?: string
+  timestamp?: string
+}
+
+export type Field = {
+  id: string
+  value: string
+}

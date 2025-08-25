@@ -4,7 +4,7 @@ import { toXML } from "jstoxml";
 import { XMLParser } from "fast-xml-parser";
 
 export abstract class BaseService {
-  private options: Options
+  protected options: Options
 
   public constructor(options: Options) {
     this.options = options
@@ -29,10 +29,12 @@ export abstract class BaseService {
     })
   }
 
-  protected async request(path: string, options: Record<string, string>) {
+  protected async request(path: string, options?: Record<string, string>) {
     const url = new URL(`https://${this.options.host}${path}`)
-    for (const [key, value] of Object.entries(options)) {
-      url.searchParams.set(key, value)
+    if (options) {
+      for (const [key, value] of Object.entries(options)) {
+        url.searchParams.set(key, value)
+      }
     }
 
     const response = await fetch(url, {

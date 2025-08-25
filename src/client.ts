@@ -1,4 +1,4 @@
-import parse from "node-html-parser";
+import { parse } from "node-html-parser";
 import { toXML } from "jstoxml"
 import { Field, Form } from "./types";
 import { XMLParser } from "fast-xml-parser";
@@ -12,42 +12,46 @@ export class WTicketBot {
 
   constructor(private options: Options) {}
 
-  async login(credentials: {
-    username: string
-    password: string
+  private async fetch(path: string, options?: {
+    method?: "GET" | "POST"
+    headers?: HeadersInit
+    body?: BodyInit
   }) {
-    const site = await fetch("https://" + this.options.host + "/jsp/wf/index.jsp")
-    this.headers["Cookie"] = site.headers.get("set-cookie")!.split(';')[0]
-
-    await fetch("https://" + this.options.host + "/login?action=refreshsession", {
-      method: "POST",
-      headers: this.headers
-    })
-
-    const response = await fetch("https://" + this.options.host + "/login", {
-      method: "POST",
+    return fetch("https://" + this.options.host + path, {
+      method: options?.method ?? "GET",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
-        "X-Requested-With": "XMLHttpRequest",
-        ...this.headers
+        ...options?.headers,
+        ...this.headers,
       },
-      body: new URLSearchParams({
-        username: credentials.username,
-        password: credentials.password,
-        login: "login",
-        ajax: "true",
-        fingerprint: "7c587cbdb2cc4d8565ce1b3a77f9a060"
-      })
+      body: options?.body
+    })
+  }
+
+  private setSession(headers: Headers) {
+    this.headers["Cookie"] = headers.getSetCookie()[0].split(';')[0]
+  }
+
+  async login(params: { username: string, password: string }) {
+    const site = await this.fetch("/jsp/wf/index.jsp")
+    this.setSession(site.headers)
+
+    await this.fetch("/login?action=refreshsession", { method: "POST" })
+
+    const body = new URLSearchParams({
+      username: params.username,
+      password: params.password
     })
 
-    this.headers["Cookie"] = response.headers.get("set-cookie")!.split(';')[0]
+    const response = await this.fetch("/login", { method: "POST", body })
+    this.setSession(response.headers)
+
+    if (!response.ok) {
+      throw new Error(response.headers.get("message") ?? "Something went wrong")
+    }
   }
 
   async logout() {
-    await fetch("https://wticket-pcrolin.multitrader.nl/login/wf/logout.jsp", {
-      headers: this.headers
-    })
+    await this.fetch("/login/wf/logout.jsp")
   }
 
   private async request(path: string, options: Record<string, string>) {
@@ -77,10 +81,9 @@ export class WTicketBot {
         }
       })
     })
-    const response = await fetch("https://" + this.options.host + "/IOServlet", {
+    const response = await this.fetch("/IOServlet", {
       method: "POST",
       headers: {
-        ...this.headers,
         "Content-Type": "text/xml; charset=UTF-8"
       },
       body
@@ -106,15 +109,12 @@ export class WTicketBot {
   }
 
   private async executeAction(params: Record<string, string>) {
-    const url = new URL(`https://${this.options.host}/IOServlet`)
+    const searchParams = new URLSearchParams()
     for (const [key, value] of Object.entries(params)) {
-      url.searchParams.set(key, value)
+      searchParams.set(key, value)
     }
 
-    return fetch(url, {
-      method: "POST",
-      headers: this.headers
-    })
+    return this.fetch("/IOServlet" + searchParams.toString(), { method: "POST" })
   }
 
   async addMessage(ticketId: number, options?: {

@@ -1,11 +1,9 @@
-import puppeteer, { LaunchOptions } from "puppeteer";
 import parse from "node-html-parser";
 import { toXML } from "jstoxml"
 import { Field, Form } from "./types";
 import { XMLParser } from "fast-xml-parser";
 
 type Options = {
-  puppeteer?: LaunchOptions
   host: string
 }
 
@@ -18,33 +16,32 @@ export class WTicketBot {
     username: string
     password: string
   }) {
-    const browser = await puppeteer.launch(this.options.puppeteer)
-    const [page] = await browser.pages()
+    const site = await fetch("https://" + this.options.host + "/jsp/wf/index.jsp")
+    this.headers["Cookie"] = site.headers.get("set-cookie")!.split(';')[0]
 
-    await page.goto(`https://${this.options.host}/jsp/wf/index.jsp`, {
-      waitUntil: "networkidle2"
+    await fetch("https://" + this.options.host + "/login?action=refreshsession", {
+      method: "POST",
+      headers: this.headers
     })
 
-    await page.type("#username", credentials.username)
-    await page.type("#password", credentials.password)
+    const response = await fetch("https://" + this.options.host + "/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
+        "X-Requested-With": "XMLHttpRequest",
+        ...this.headers
+      },
+      body: new URLSearchParams({
+        username: credentials.username,
+        password: credentials.password,
+        login: "login",
+        ajax: "true",
+        fingerprint: "7c587cbdb2cc4d8565ce1b3a77f9a060"
+      })
+    })
 
-    const buttons = await page.$$("a.atsc-button")
-    for (const button of buttons) {
-      const text = await button.evaluate(el => el.textContent)
-      if (text === "Login") {
-        await button.click()
-        break
-      }
-    }
-
-    try {
-      await page.waitForNavigation({ waitUntil: "networkidle2" })
-    } catch {
-      throw new Error("Login failed");
-    }
-
-    this.headers["Cookie"] = (await page.browserContext().cookies()).map(cookie => `${cookie.name}=${cookie.value}`).join("; ");
-    await browser.close();
+    this.headers["Cookie"] = response.headers.get("set-cookie")!.split(';')[0]
   }
 
   async logout() {

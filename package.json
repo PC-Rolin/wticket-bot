@@ -1,16 +1,16 @@
 {
   "name": "wticket-bot",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "scripts": {
     "build": "tsup"
   },
   "dependencies": {
     "fast-xml-parser": "^5.2.5",
     "jstoxml": "^7.0.1",
-    "node-html-parser": "^7.0.1",
-    "puppeteer": "^24.16.1"
+    "node-html-parser": "^7.0.1"
   },
   "devDependencies": {
     "@types/jstoxml": "^5.0.0",

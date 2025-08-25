@@ -1,7 +1,8 @@
 import { BaseService } from "./index";
+import { LoginParams } from "./auth.types";
 
 export class AuthService extends BaseService {
-  async login(params: { username: string, password: string }) {
+  async login(params: LoginParams) {
     const site = await this.fetch("/jsp/wf/index.jsp")
     this.setSession(site.headers)
 

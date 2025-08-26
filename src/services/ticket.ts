@@ -1,6 +1,8 @@
 import { BaseService } from "./index";
 import { parse } from "node-html-parser";
 import { Field } from "../types";
+import { CreateMessage, SearchColumn } from "./ticket.types";
+import { SearchColumns } from "./ticket.config";
 
 export class TicketService extends BaseService {
   async get(ticketNumber: number) {
@@ -24,16 +26,52 @@ export class TicketService extends BaseService {
     }
   }
 
-  async addMessage(ticketId: number, options?: {
-    /** Defines whether the message is an internal (I) or external (E) message */
-    messageType?: "I" | "E"
-    color?: "BLAUW" | "DONKER-GRIJS" | "ORANJE" | "GEEL" | "GROEN" | "PAARS" | "ROOD" | "ROZE" | "TURQUOISE"
-    title?: string
-    message?: string
+  async list(params?: {
+    filters?: {
+      column: SearchColumn
+      operator: "exact" | "contains"
+      value: string
+    }[]
+    /** @default 30 */
+    limit?: number
   }) {
+    const options: Record<string, string> = {
+      queryid: "wf1act"
+    }
+    if (params?.filters) {
+      const columns: number[] = []
+      const keys: string[] = []
+      for (const filter of params.filters) {
+        columns.push(SearchColumns[filter.column])
+        keys.push(`_<${filter.operator}>_${filter.value}`)
+      }
+      options["searchcol"] = columns.join(",")
+      options["key"] = keys.join(',')
+    }
+    if (params?.limit) options["maxrows"] = String(params.limit)
+
+    const html = parse(await this.request("/jsp/atsc/UITableIFrame.jsp", options))
+    const trs = html.querySelectorAll("tr")
+
+    const tickets: any[] = []
+    for (const tr of trs) {
+      if (tr.getAttribute("empty") === "true") continue
+      const tds = tr.querySelectorAll("td")
+
+      tickets.push({
+        unid: Number(tr.getAttribute("unid")!),
+        id: Number(tds[1].textContent),
+        searchName: tds[2].textContent === '' ? undefined : tds[2].textContent,
+      })
+    }
+
+    return tickets
+  }
+
+  async addMessage(ticketUNID: number, options?: CreateMessage) {
     const fields: Field[] = [
       { id: "messageType", value: options?.messageType ?? "I" },
-      { id: "actnr_wf1act_unid", value: String(ticketId) }
+      { id: "actnr_wf1act_unid", value: String(ticketUNID) }
     ]
     if (options?.color) fields.push({ id: "headerclass", value: options.color })
     if (options?.title) fields.push({ id: "onderwerp", value: options.title })

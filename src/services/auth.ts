@@ -1,5 +1,5 @@
 import { BaseService } from "./index";
-import { LoginParams, Status } from "./auth.types";
+import { LoginParams, Status, User, UserPreferences } from "./auth.types";
 import { parse, type HTMLElement } from "node-html-parser";
 
 export class AuthService extends BaseService {
@@ -30,7 +30,7 @@ export class AuthService extends BaseService {
     return Number(unid)
   }
 
-  async getUser() {
+  async getUser(): Promise<User> {
     const status = await this.status()
     const html = parse(await this.request("/jsp/gc/uiform_gc1mdw_profiel.jsp", {
       uniqueid: String(status.user.unid)
@@ -66,7 +66,7 @@ export class AuthService extends BaseService {
     function getPreferences(html: HTMLElement) {
       const trs = html.querySelectorAll("tr")
 
-      const preferences: Record<string, any>[] = []
+      const preferences: UserPreferences[] = []
       for (const tr of trs) {
         const unid = tr.getAttribute("unid")
         if (unid && unid !== "-1") {

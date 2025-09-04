@@ -1,35 +1,38 @@
 import { BaseService } from "./index";
 import { parse } from "node-html-parser";
 import { Field } from "../types";
-import { CreateMessage, SearchColumn } from "./ticket.types";
+import { CreateMessage, SearchColumn, Ticket } from "./ticket.types";
 import { SearchColumns } from "./ticket.config";
+import { date } from "../utils/parser";
 
 export class TicketService extends BaseService {
-  async get(ticketNumber: number) {
+  async get(id: number) {
     const html = parse(await this.request("/jsp/atsc/UITableIFrame.jsp", {
       queryid: "wf1act",
       searchcol: "2",
-      key: `_<exact>_${ticketNumber}`
+      key: `_<exact>_${id}`
     }))
 
     const tr = html.querySelectorAll("tr").find(tr => tr.getAttribute("empty") !== "true")
     if (!tr) throw new Error("Ticket not found")
 
     const tds = tr.querySelectorAll("td")
-    const id = Number(tr.getAttribute("unid") as string)
+    const unid = Number(tr.getAttribute("unid") as string)
 
-    return {
+    const ticket: Ticket = {
+      unid,
       id,
-      number: Number(tds[1].textContent),
       searchName: tds[2].textContent,
       description: tds[3].textContent,
       priority: Number(tds[4].textContent),
       internalPriority: Number(tds[5].textContent),
       status: tds[6].textContent === '' ? undefined : tds[6].textContent,
       administrativeStatus: tds[7].textContent === '' ? undefined : tds[7].textContent,
-      plannedFrom: new Date(tds[8].textContent),
-      plannedUntil: new Date(tds[9].textContent),
+      plannedFrom: tds[8].textContent === '' ? undefined : date(tds[8].textContent),
+      plannedUntil: tds[9].textContent === '' ? undefined : date(tds[9].textContent),
+      deadline: tds[10].textContent === '' ? undefined : date(tds[10].textContent),
     }
+    return ticket
   }
 
   async list(params?: {

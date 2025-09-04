@@ -9,3 +9,23 @@ export type CreateMessage = {
 }
 
 export type SearchColumn = keyof typeof SearchColumns
+
+export type Ticket = {
+  /** Unique ID of the ticket
+   * @example 1743211873359
+   * */
+  unid: number
+  /** ID (ticket number)
+   * @example 285862 */
+  id: number
+  /** Search name of the relation */
+  searchName: string
+  description: string
+  priority: number
+  internalPriority: number
+  status?: string
+  administrativeStatus?: string
+  plannedFrom?: Date
+  plannedUntil?: Date
+  deadline?: Date
+}

@@ -22,7 +22,13 @@ export class TicketService extends BaseService {
       id,
       number: Number(tds[1].textContent),
       searchName: tds[2].textContent,
-      description: tds[3].textContent
+      description: tds[3].textContent,
+      priority: Number(tds[4].textContent),
+      internalPriority: Number(tds[5].textContent),
+      status: tds[6].textContent === '' ? undefined : tds[6].textContent,
+      administrativeStatus: tds[7].textContent === '' ? undefined : tds[7].textContent,
+      plannedFrom: new Date(tds[8].textContent),
+      plannedUntil: new Date(tds[9].textContent),
     }
   }
 

@@ -74,15 +74,15 @@ export abstract class BaseService {
 
     if (xml.ioservletresponse) {
       if (xml.ioservletresponse.error === "") {
-        throw new Error("Form not recognized")
+        return new Error("Form not recognized")
       } else {
-        throw new Error(xml.ioservletresponse.error)
+        return new Error(xml.ioservletresponse.error)
       }
     } else {
       if (xml.message.error === "") {
         return
       } else {
-        throw new Error(xml.message.error)
+        return new Error(xml.message.error)
       }
     }
   }

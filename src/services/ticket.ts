@@ -1,5 +1,5 @@
 import { BaseService } from "./index";
-import { parse } from "node-html-parser";
+import { parse, type HTMLElement } from "node-html-parser";
 import { Field } from "../types";
 import { CreateMessage, SearchColumn, Ticket } from "./ticket.types";
 import { SearchColumns } from "./ticket.config";
@@ -7,6 +7,22 @@ import { date } from "../utils/parser";
 import { Result } from "./types";
 
 export class TicketService extends BaseService {
+  private parseTicket(unid: number, id: number, tds: HTMLElement[]): Ticket {
+    return {
+      unid,
+      id,
+      searchName: tds[2].textContent,
+      description: tds[3].textContent,
+      priority: Number(tds[4].textContent),
+      internalPriority: Number(tds[5].textContent),
+      status: tds[6].textContent === '' ? undefined : tds[6].textContent,
+      administrativeStatus: tds[7].textContent === '' ? undefined : tds[7].textContent,
+      plannedFrom: tds[8].textContent === '' ? undefined : date(tds[8].textContent),
+      plannedUntil: tds[9].textContent === '' ? undefined : date(tds[9].textContent),
+      deadline: tds[10].textContent === '' ? undefined : date(tds[10].textContent),
+    }
+  }
+
   async get(id: number): Result<Ticket> {
     try {
       const html = parse(await this.request("/jsp/atsc/UITableIFrame.jsp", {
@@ -22,19 +38,7 @@ export class TicketService extends BaseService {
       const unid = Number(tr.getAttribute("unid") as string)
 
       return {
-        data: {
-          unid,
-          id,
-          searchName: tds[2].textContent,
-          description: tds[3].textContent,
-          priority: Number(tds[4].textContent),
-          internalPriority: Number(tds[5].textContent),
-          status: tds[6].textContent === '' ? undefined : tds[6].textContent,
-          administrativeStatus: tds[7].textContent === '' ? undefined : tds[7].textContent,
-          plannedFrom: tds[8].textContent === '' ? undefined : date(tds[8].textContent),
-          plannedUntil: tds[9].textContent === '' ? undefined : date(tds[9].textContent),
-          deadline: tds[10].textContent === '' ? undefined : date(tds[10].textContent),
-        },
+        data: this.parseTicket(unid, id, tds),
         error: null
       }
     } catch {
@@ -54,40 +58,49 @@ export class TicketService extends BaseService {
     /** @default 30 */
     limit?: number
   }) {
-    const options: Record<string, string> = {
-      queryid: "wf1act"
-    }
-    if (params?.filters) {
-      const columns: number[] = []
-      const keys: string[] = []
-      for (const filter of params.filters) {
-        columns.push(SearchColumns[filter.column])
-        keys.push(`_<${filter.operator}>_${filter.value}`)
+    try {
+      const options: Record<string, string> = {
+        queryid: "wf1act"
       }
-      options["searchcol"] = columns.join(",")
-      options["key"] = keys.join(',')
+      if (params?.filters) {
+        const columns: number[] = []
+        const keys: string[] = []
+        for (const filter of params.filters) {
+          columns.push(SearchColumns[filter.column])
+          keys.push(`_<${filter.operator}>_${filter.value}`)
+        }
+        options["searchcol"] = columns.join(",")
+        options["key"] = keys.join(',')
+      }
+      if (params?.limit) options["maxrows"] = String(params.limit)
+
+      const html = parse(await this.request("/jsp/atsc/UITableIFrame.jsp", options))
+      const trs = html.querySelectorAll("tr")
+
+      const tickets: Ticket[] = []
+      for (const tr of trs) {
+        if (tr.getAttribute("empty") === "true") continue
+        const tds = tr.querySelectorAll("td")
+        const unid = Number(tr.getAttribute("unid")!)
+        const id = Number(tds[1].textContent)
+
+        tickets.push(this.parseTicket(unid, id, tds))
+      }
+
+      return {
+        data: tickets,
+        error: null
+      }
+    } catch {
+      return {
+        data: null,
+        error: new Error("Something went wrong")
+      }
     }
-    if (params?.limit) options["maxrows"] = String(params.limit)
 
-    const html = parse(await this.request("/jsp/atsc/UITableIFrame.jsp", options))
-    const trs = html.querySelectorAll("tr")
-
-    const tickets: any[] = []
-    for (const tr of trs) {
-      if (tr.getAttribute("empty") === "true") continue
-      const tds = tr.querySelectorAll("td")
-
-      tickets.push({
-        unid: Number(tr.getAttribute("unid")!),
-        id: Number(tds[1].textContent),
-        searchName: tds[2].textContent === '' ? undefined : tds[2].textContent,
-      })
-    }
-
-    return tickets
   }
 
-  async addMessage(ticketUNID: number, options?: CreateMessage) {
+  async addMessage(ticketUNID: number, options?: CreateMessage): Result<{ success: true }> {
     const fields: Field[] = [
       { id: "messageType", value: options?.messageType ?? "I" },
       { id: "actnr_wf1act_unid", value: String(ticketUNID) }
@@ -96,7 +109,20 @@ export class TicketService extends BaseService {
     if (options?.title) fields.push({ id: "onderwerp", value: options.title })
     if (options?.message) fields.push({ id: "bericht", value: options.message })
 
-    await this.submitForm({ id: "wf1procesinsmsgadd", action: "15" }, fields)
+    const error = await this.submitForm({ id: "wf1procesinsmsgadd", action: "15" }, fields)
+    if (error) {
+      return {
+        data: null,
+        error
+      }
+    } else {
+      return {
+        data: {
+          success: true
+        },
+        error: null
+      }
+    }
   }
 
   async pinMessage(messageId: number) {

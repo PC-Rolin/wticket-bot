@@ -24,37 +24,30 @@ export class TicketService extends BaseService {
   }
 
   async get(id: number): Result<Ticket> {
-    try {
-      const html = parse(await this.request("/jsp/atsc/UITableIFrame.jsp", {
-        queryid: "wf1act",
-        searchcol: "2",
-        key: `_<exact>_${id}`
-      }))
-
-      const tr = html.querySelectorAll("tr").find(tr => tr.getAttribute("empty") !== "true")
-      if (!tr) return { data: null, error: new Error("Ticket not found") }
-
-      const tds = tr.querySelectorAll("td")
-      const unid = Number(tr.getAttribute("unid") as string)
-
-      return {
-        data: this.parseTicket(unid, id, tds),
-        error: null
+    const result = await this.list({
+      filters: {
+        id: {
+          operator: "exact",
+          value: String(id)
+        }
       }
-    } catch {
-      return {
-        data: null,
-        error: new Error("Something went wrong")
-      }
+    })
+    if (result.error) return { data: null, error: result.error }
+    if (result.data.length === 0) return { data: null, error: new Error("Ticket not found") }
+    return {
+      data: result.data[0],
+      error: null
     }
   }
 
+
   async list(params?: {
-    filters?: {
-      column: SearchColumn
-      operator: "exact" | "contains"
-      value: string
-    }[]
+    filters?: Partial<{
+      [C in SearchColumn]: {
+        operator: "exact" | "contains"
+        value: string
+      }
+    }>
     /** @default 30 */
     limit?: number
   }) {
@@ -65,9 +58,9 @@ export class TicketService extends BaseService {
       if (params?.filters) {
         const columns: number[] = []
         const keys: string[] = []
-        for (const filter of params.filters) {
-          columns.push(SearchColumns[filter.column])
-          keys.push(`_<${filter.operator}>_${filter.value}`)
+        for (const filter of Object.keys(params.filters) as (keyof typeof params.filters)[]) {
+          columns.push(SearchColumns[filter])
+          keys.push(`_<${params.filters[filter]!.operator}>_${params.filters[filter]!.value}`)
         }
         options["searchcol"] = columns.join(",")
         options["key"] = keys.join(',')

@@ -3,24 +3,53 @@ import { parse, type HTMLElement } from "node-html-parser";
 import { Field } from "../types";
 import { CreateMessage, SearchColumn, Ticket } from "./ticket.types";
 import { SearchColumns } from "./ticket.config";
-import { date } from "../utils/parser";
 import { Result } from "./types";
+import { z } from "zod";
+
+function localeDate(date: string) {
+  const [day, month, year] = date.split('-')
+  return new Date(Number(year), Number(month) - 1, Number(day))
+}
+
+const TicketSchema = z.object({
+  unid: z.number(),
+  id: z.number(),
+  searchName: z.string(),
+  description: z.string(),
+  priority: z.coerce.number(),
+  internalPriority: z.coerce.number(),
+  status: z.string().optional(),
+  administrativeStatus: z.string().optional(),
+  plannedFrom: z.preprocess(value => {
+    if (typeof value === "string" && value.length > 0) {
+      return localeDate(value)
+    }
+    return
+  }, z.date().optional()),
+  plannedUntil: z.preprocess(value => {
+    if (typeof value === "string" && value.length > 0) {
+      return localeDate(value)
+    }
+    return
+  }, z.date().optional()),
+  deadline: z.coerce.date().optional(),
+})
 
 export class TicketService extends BaseService {
   private parseTicket(unid: number, id: number, tds: HTMLElement[]): Ticket {
-    return {
+    return TicketSchema.parse({
       unid,
       id,
       searchName: tds[2].textContent,
       description: tds[3].textContent,
-      priority: Number(tds[4].textContent),
-      internalPriority: Number(tds[5].textContent),
-      status: tds[6].textContent === '' ? undefined : tds[6].textContent,
-      administrativeStatus: tds[7].textContent === '' ? undefined : tds[7].textContent,
-      plannedFrom: tds[8].textContent === '' ? undefined : date(tds[8].textContent),
-      plannedUntil: tds[9].textContent === '' ? undefined : date(tds[9].textContent),
-      deadline: tds[10].textContent === '' ? undefined : date(tds[10].textContent),
-    }
+      priority: tds[4].textContent,
+      internalPriority: tds[5].textContent,
+      status: tds[6].textContent,
+      administrativeStatus: tds[7].textContent,
+      plannedFrom: tds[8].textContent,
+      plannedUntil: tds[9].textContent,
+      deadline: tds[10].textContent,
+    })
   }
 
   async get(id: number): Result<Ticket> {
@@ -77,7 +106,15 @@ export class TicketService extends BaseService {
         const unid = Number(tr.getAttribute("unid")!)
         const id = Number(tds[1].textContent)
 
-        tickets.push(this.parseTicket(unid, id, tds))
+        try {
+          tickets.push(this.parseTicket(unid, id, tds))
+        } catch (error) {
+          console.log(error)
+          return {
+            data: null,
+            error: new Error(`Failed to parse ticket ${id}`)
+          }
+        }
       }
 
       return {

@@ -79,6 +79,9 @@ export abstract class BaseService {
         return new Error(xml.ioservletresponse.error ?? "Something went wrong")
       }
     }
+    if (xml.message?.error?.length > 0) {
+      return new Error(xml.message.error)
+    }
   }
 
   protected async executeAction(params: Record<string, string>) {

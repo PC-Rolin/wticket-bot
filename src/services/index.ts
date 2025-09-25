@@ -78,14 +78,6 @@ export abstract class BaseService {
       } else {
         return new Error(xml.ioservletresponse.error ?? "Something went wrong")
       }
-    } else {
-      if (xml.message) {
-        if (xml.message.error && xml.message.error === "") {
-          return
-        } else {
-          return new Error(xml.message.error ?? "Something went wrong")
-        }
-      }
     }
   }
 

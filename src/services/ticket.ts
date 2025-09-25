@@ -198,17 +198,10 @@ export class TicketService extends BaseService {
   }
 
   async update() {
-    const response = await this.executeAction({
-      action: "99",
-      name: "wf1act",
-      uniqueid: "1743211873359",
-      mode: "2"
-    })
-
-    console.log(await response.text())
+    await this.fetch("/jsp/wf/uiform/uiform_wf1act_edit.jsp?mode=2&uniqueid=1743211873359")
 
     const fields: Field[] = [
-      { id: "ins_omschr", value: "RolinPortal Test" },
+      { id: "ins_omschr", value: "RolinPortal Test Bot" },
       { id: "ins_nr", value: "285862" },
       { id: "relgrp", value: "" },
       { id: "relgrp_gc1relgrp_unid", value: "" },

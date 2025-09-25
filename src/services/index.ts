@@ -73,17 +73,14 @@ export abstract class BaseService {
     const xml = parser.parse(text)
 
     if (xml.ioservletresponse) {
-      if (xml.ioservletresponse.error === "") {
+      if (xml.ioservletresponse.error && xml.ioservletresponse.error === "") {
         return new Error("Form not recognized")
       } else {
-        return new Error(xml.ioservletresponse.error)
+        return new Error(xml.ioservletresponse.error ?? "Something went wrong")
       }
-    } else {
-      if (xml.message.error === "") {
-        return
-      } else {
-        return new Error(xml.message.error)
-      }
+    }
+    if (xml.message?.error?.length > 0) {
+      return new Error(xml.message.error)
     }
   }
 
@@ -93,6 +90,6 @@ export abstract class BaseService {
       searchParams.set(key, value)
     }
 
-    return this.fetch("/IOServlet" + searchParams.toString(), { method: "POST" })
+    return this.fetch("/IOServlet?" + searchParams.toString(), { method: "POST" })
   }
 }

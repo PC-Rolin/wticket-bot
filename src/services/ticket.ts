@@ -196,4 +196,42 @@ export class TicketService extends BaseService {
       }
     })
   }
+
+  async update(unid: number, data: {
+    description?: string
+    priority?: number
+    status?: string
+  }, extra?: Field[]) {
+    await this.fetch(`/jsp/wf/uiform/uiform_wf1act_edit.jsp?mode=2&uniqueid=${unid}`)
+
+    const fields: Field[] = [
+      { id: "uniqueid", value: String(unid) },
+      { id: "parentins_wf1procesins_unid", value: "1743211873355" },
+      { id: "mode", value: "2" }
+    ]
+    if (data.description) fields.push({ id: "ins_omschr", value: data.description })
+    if (data.priority) fields.push({ id: "priorcod", value: String(data.priority) })
+    if (data.status) fields.push({ id: "status", value: data.status })
+
+    if (extra) fields.push(...extra)
+
+    const error = await this.submitForm(
+      { id: "wf1act", action: "15" },
+      fields
+    )
+
+    if (error) {
+      return {
+        data: null,
+        error
+      }
+    } else {
+      return {
+        data: {
+          success: true
+        },
+        error: null
+      }
+    }
+  }
 }

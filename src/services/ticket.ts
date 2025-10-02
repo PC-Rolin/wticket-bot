@@ -32,7 +32,12 @@ const TicketSchema = z.object({
     }
     return
   }, z.date().optional()),
-  deadline: z.coerce.date().optional(),
+  deadline: z.preprocess(value => {
+    if (typeof value === "string" && value.length > 0) {
+      return localeDate(value)
+    }
+    return
+  }, z.date().optional())
 })
 
 export class TicketService extends BaseService {

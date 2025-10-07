@@ -17,6 +17,6 @@
     "@types/jstoxml": "^5.0.0",
     "@types/node": "^24.7.0",
     "tsup": "^8.5.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.3"
   }
 }
